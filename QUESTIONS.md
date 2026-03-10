@@ -31,10 +31,13 @@
 1. Create harbor project `gitopsapi` at Harbor (192.168.4.100)
 2. Push packaged chart: `/tmp/gitopsapi-0.1.0.tgz`
 
-**Note from Trismagistus**: Harbor not accessible from current machine. Martin, please:
-- Confirm Harbor access method (UI/CLI/credentials)
-- Or handle Harbor push directly if needed
-- Chart ready at: `/tmp/gitopsapi-0.1.0.tgz` (1.4KB, created 2026-03-10 23:07 GMT)
+**Note from Trismagistus**: 
+- Chart copied to freyr: `/tmp/gitopsapi-0.1.0.tgz`
+- Attempted Harbor API access (http://192.168.4.100/api/v2.0/projects) - no response
+- Need from Martin:
+  - Confirm Harbor is running on 192.168.4.100
+  - Provide Harbor credentials (admin password?)
+  - Or push chart manually via Harbor UI: Library → New Project → gitopsapi → Upload Chart
 
 **Context**: Chart is built and linted. Claude Code does not have direct access to harbor. Harbor push is a Trismagistus responsibility going forward. Chart source: `gitopsapi/charts/gitopsapi/` v0.1.0.
 
