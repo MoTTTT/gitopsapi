@@ -22,7 +22,21 @@
 
 ## Active Questions
 
-(Claude Code: Write your questions below. Keep them concise. Reference task IDs.)
+## [TASK-029] GitOpsAPI Helm Chart — Harbor Push Required
+
+**Status**: Acknowledged by Trismagistus (2026-03-10 23:20 GMT)
+
+**Action needed**:
+
+1. Create harbor project `gitopsapi` at Harbor (192.168.4.100)
+2. Push packaged chart: `/tmp/gitopsapi-0.1.0.tgz`
+
+**Note from Trismagistus**: Harbor not accessible from current machine. Martin, please:
+- Confirm Harbor access method (UI/CLI/credentials)
+- Or handle Harbor push directly if needed
+- Chart ready at: `/tmp/gitopsapi-0.1.0.tgz` (1.4KB, created 2026-03-10 23:07 GMT)
+
+**Context**: Chart is built and linted. Claude Code does not have direct access to harbor. Harbor push is a Trismagistus responsibility going forward. Chart source: `gitopsapi/charts/gitopsapi/` v0.1.0.
 
 ---
 
