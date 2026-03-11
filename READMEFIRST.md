@@ -34,9 +34,11 @@ Your current task assignments are in:
 
 ---
 
-## Qdrant Context Store
+## Shared Context (Qdrant) — CRITICAL USAGE PATTERN
 
-Instead of loading full spec files into context, **query Qdrant** for relevant snippets.
+**⚠️ YOU MUST USE QDRANT FOR CONTEXT RETRIEVAL**
+
+**DO NOT read files from local workspace for context.** Use Qdrant.
 
 **Access**: http://localhost:6333 (port-forwarded from openclaw cluster)
 
@@ -59,6 +61,31 @@ for result in results:
 ```
 
 **Why**: Massive token savings. Don't load 20k token spec files — query for 500 tokens of relevant context.
+
+**Context Missing or Stale?**
+
+If you need context that's not in Qdrant or is outdated:
+
+1. **DO NOT** read the file from local workspace
+2. **RAISE A TASK** to gateway in `podzoneAgentTeam/agents/claude-code/trismagistus-tasks.md`:
+
+```markdown
+### [CC-NNN] Load Context for <topic>
+
+**Status**: New
+**Priority**: Blocking <TASK>
+**Detail**: agents/claude-code/details/CC-NNN-context-load.md
+
+**Summary**: Need <topic> context loaded to Qdrant (missing/stale).
+
+**Requested**: YYYY-MM-DD HH:MM GMT
+```
+
+Gateway will delegate to archiver for ingestion.
+
+**Only read files directly when:**
+- You are **writing/editing** that specific file
+- **NEVER** for context retrieval
 
 ---
 

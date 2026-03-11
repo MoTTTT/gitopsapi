@@ -20,6 +20,22 @@
 
 ---
 
+## ⚠️ CRITICAL: Shared Context Usage (2026-03-11)
+
+**YOU ARE "CODER" ROLE — USE QDRANT FOR CONTEXT, NOT LOCAL FILES**
+
+**Rule:** Query Qdrant (http://localhost:6333) for specifications, requirements, prior decisions.
+
+**DO NOT** read files from `/Users/martincolley/workspace/podzoneAgentTeam/` or `cluster09/` for context.
+
+**If context missing/stale:** Raise task to gateway (write to `podzoneAgentTeam/agents/claude-code/trismagistus-tasks.md`).
+
+**Only read files directly when:** Writing/editing that specific file. **NEVER** for context retrieval.
+
+**See:** `READMEFIRST.md` (updated with full pattern), `podzoneAgentTeam/planning/ROLE-PLAYER-MAPPING.md`
+
+---
+
 ## Active Questions
 
 ## [TASK-055] Archive Completed Tasks
