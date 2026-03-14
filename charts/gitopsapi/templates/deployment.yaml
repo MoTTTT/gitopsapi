@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      {{- if .Values.image.pullSecretName }}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecretName }}
+      {{- end }}
+      containers:
+        - name: gitopsapi
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: GITOPS_REPO_URL
+              value: {{ .Values.gitops.repoUrl | quote }}
+            - name: GITOPS_BRANCH
+              value: {{ .Values.gitops.branch | quote }}
+            - name: GITHUB_REPO
+              value: {{ .Values.gitops.githubRepo | quote }}
+            - name: GITOPS_LOCAL_PATH
+              value: {{ .Values.gitops.localPath | quote }}
+            - name: GITOPS_SSH_KEY_PATH
+              value: /etc/gitops-ssh/id_rsa
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.githubTokenSecret }}
+                  key: token
+            - name: MGMT_KUBECONFIG_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.mgmtKubeconfigSecret }}
+                  key: kubeconfig
+            - name: SOPS_AGE_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.ageKeySecret }}
+                  key: key.txt
+          volumeMounts:
+            - name: ssh-key
+              mountPath: /etc/gitops-ssh
+              readOnly: true
+            - name: gitops-repo
+              mountPath: /tmp/gitops-repo
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: ssh-key
+          secret:
+            secretName: {{ .Values.secrets.sshKeySecret }}
+            defaultMode: 0400
+        - name: gitops-repo
+          emptyDir: {}
