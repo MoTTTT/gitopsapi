@@ -6,13 +6,14 @@ import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch, mock_open
 
-from gitopsgui.services.git_service import GitService, REPO_LOCAL_PATH
+from gitopsgui.services.git_service import GitService
 
 
 @pytest.fixture()
-def svc():
+def svc(tmp_path):
     s = GitService()
-    GitService._repo = MagicMock()  # inject a mock repo
+    s._git_repo = MagicMock()   # inject a mock repo (instance-based)
+    s._local_path = tmp_path    # point at tmp dir for file operations
     return s
 
 
@@ -20,40 +21,32 @@ def svc():
 # read_file
 # ---------------------------------------------------------------------------
 
-def test_read_file_returns_contents(tmp_path, svc):
+async def test_read_file_returns_contents(svc, tmp_path):
     f = tmp_path / "test.yaml"
     f.write_text("key: value\n")
-    with patch("gitopsgui.services.git_service.REPO_LOCAL_PATH", tmp_path):
-        import asyncio
-        result = asyncio.get_event_loop().run_until_complete(svc.read_file("test.yaml"))
+    result = await svc.read_file("test.yaml")
     assert result == "key: value\n"
 
 
-def test_read_file_missing_raises(tmp_path, svc):
-    import asyncio
-    with patch("gitopsgui.services.git_service.REPO_LOCAL_PATH", tmp_path):
-        with pytest.raises(FileNotFoundError):
-            asyncio.get_event_loop().run_until_complete(svc.read_file("missing.yaml"))
+async def test_read_file_missing_raises(svc):
+    with pytest.raises(FileNotFoundError):
+        await svc.read_file("missing.yaml")
 
 
 # ---------------------------------------------------------------------------
 # list_dir
 # ---------------------------------------------------------------------------
 
-def test_list_dir_returns_subdirs(tmp_path, svc):
+async def test_list_dir_returns_subdirs(svc, tmp_path):
     (tmp_path / "dir-a").mkdir()
     (tmp_path / "dir-b").mkdir()
     (tmp_path / "file.yaml").write_text("")
-    import asyncio
-    with patch("gitopsgui.services.git_service.REPO_LOCAL_PATH", tmp_path):
-        result = asyncio.get_event_loop().run_until_complete(svc.list_dir("."))
+    result = await svc.list_dir(".")
     assert set(result) == {"dir-a", "dir-b"}
 
 
-def test_list_dir_nonexistent_returns_empty(tmp_path, svc):
-    import asyncio
-    with patch("gitopsgui.services.git_service.REPO_LOCAL_PATH", tmp_path):
-        result = asyncio.get_event_loop().run_until_complete(svc.list_dir("nonexistent"))
+async def test_list_dir_nonexistent_returns_empty(svc):
+    result = await svc.list_dir("nonexistent")
     assert result == []
 
 
@@ -61,12 +54,8 @@ def test_list_dir_nonexistent_returns_empty(tmp_path, svc):
 # write_file
 # ---------------------------------------------------------------------------
 
-def test_write_file_creates_file_and_stages(tmp_path, svc):
-    import asyncio
-    with patch("gitopsgui.services.git_service.REPO_LOCAL_PATH", tmp_path):
-        asyncio.get_event_loop().run_until_complete(
-            svc.write_file("subdir/test.yaml", "content: 42\n")
-        )
+async def test_write_file_creates_file_and_stages(svc, tmp_path):
+    await svc.write_file("subdir/test.yaml", "content: 42\n")
     assert (tmp_path / "subdir" / "test.yaml").read_text() == "content: 42\n"
     svc._get_repo().index.add.assert_called_once()
 
@@ -75,22 +64,21 @@ def test_write_file_creates_file_and_stages(tmp_path, svc):
 # commit
 # ---------------------------------------------------------------------------
 
-def test_commit_returns_sha(svc):
-    import asyncio
+async def test_commit_returns_sha(svc):
     mock_commit = MagicMock()
     mock_commit.hexsha = "abc123def456"
     svc._get_repo().index.commit.return_value = mock_commit
 
-    result = asyncio.get_event_loop().run_until_complete(svc.commit("test commit"))
+    result = await svc.commit("test commit")
     assert result == "abc123def456"
 
 
 # ---------------------------------------------------------------------------
-# _get_repo raises if not initialised
+# _get_repo raises if not initialised (no repo_url, no _git_repo)
 # ---------------------------------------------------------------------------
 
 def test_get_repo_raises_if_not_initialised():
-    GitService._repo = None
-    svc = GitService()
+    svc = GitService(repo_url="")  # explicit empty → _repo_url is ""
+    # _git_repo is None and _repo_url is "" → should raise RuntimeError
     with pytest.raises(RuntimeError, match="not initialised"):
         svc._get_repo()

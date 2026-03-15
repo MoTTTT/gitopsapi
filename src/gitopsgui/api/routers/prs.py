@@ -18,7 +18,7 @@ _STAGE_APPROVERS = {
 async def list_prs(
     state: Optional[str] = Query("open", description="open | closed | all"),
     label: Optional[str] = Query(None),
-    _=Depends(require_role("cluster_operator", "build_manager", "senior_developer")),
+    _=require_role("cluster_operator", "build_manager", "senior_developer"),
 ):
     svc = GitHubService()
     return await svc.list_prs(state=state, label=label)
@@ -27,7 +27,7 @@ async def list_prs(
 @router.get("/prs/{pr_number}", response_model=PRDetail)
 async def get_pr(
     pr_number: int,
-    _=Depends(require_role("cluster_operator", "build_manager", "senior_developer")),
+    _=require_role("cluster_operator", "build_manager", "senior_developer"),
 ):
     svc = GitHubService()
     result = await svc.get_pr(pr_number)
@@ -37,14 +37,14 @@ async def get_pr(
 
 
 @router.post("/prs/{pr_number}/approve", status_code=204)
-async def approve_pr(pr_number: int, caller: CallerInfo = Depends(require_role("cluster_operator", "build_manager"))):
+async def approve_pr(pr_number: int, caller: CallerInfo = require_role("cluster_operator", "build_manager")):
     svc = GitHubService()
     pr = await svc.get_pr(pr_number)
     if not pr:
         raise HTTPException(status_code=404, detail=f"PR #{pr_number} not found")
 
     stage = pr.stage or ""
-    permitted = _STAGE_APPROVERS.get(stage, set())
+    permitted = _STAGE_APPROVERS.get(stage, {"cluster_operator"})
     if caller.role not in permitted:
         raise HTTPException(
             status_code=403,
@@ -57,7 +57,7 @@ async def approve_pr(pr_number: int, caller: CallerInfo = Depends(require_role("
 @router.post("/prs/{pr_number}/merge", status_code=204)
 async def merge_pr(
     pr_number: int,
-    caller: CallerInfo = Depends(require_role("cluster_operator", "build_manager")),
+    caller: CallerInfo = require_role("cluster_operator", "build_manager"),
 ):
     svc = GitHubService()
     pr = await svc.get_pr(pr_number)

@@ -38,6 +38,7 @@ def test_change_spec_has_change_name():
         change_request_id="CHG001",
         change_name="Deploy new widget",
         description="Adds the widget feature",
+        app_id="my-app",
         app_branch="feature/widget",
     )
     assert change.change_name == "Deploy new widget"

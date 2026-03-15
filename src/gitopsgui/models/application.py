@@ -23,3 +23,7 @@ class ApplicationResponse(BaseModel):
     spec: ApplicationSpec
     status: Optional[ApplicationStatus] = None
     pr_url: Optional[str] = None
+
+
+class DisableApplicationRequest(BaseModel):
+    cluster: str  # target cluster name, e.g. "production"

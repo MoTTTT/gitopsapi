@@ -11,7 +11,8 @@ def test_cluster_spec_defaults():
     spec = ClusterSpec(
         name="my-cluster",
         platform="proxmox",
-        ip_range="192.168.1.0/24",
+        vip="192.168.1.0",
+        ip_range="192.168.1.1-192.168.1.7",
         dimensions=ClusterDimensions(),
         gitops_repo_url="https://github.com/test/repo",
         sops_secret_ref="sops-key",
@@ -24,7 +25,8 @@ def test_cluster_spec_missing_required_field():
     with pytest.raises(ValidationError):
         ClusterSpec(
             platform="proxmox",
-            ip_range="192.168.1.0/24",
+            vip="192.168.1.0",
+        ip_range="192.168.1.1-192.168.1.7",
             dimensions=ClusterDimensions(),
             gitops_repo_url="https://github.com/test/repo",
             sops_secret_ref="sops-key",
@@ -37,7 +39,8 @@ def test_cluster_response_optional_fields():
     spec = ClusterSpec(
         name="c",
         platform="proxmox",
-        ip_range="10.0.0.0/24",
+        vip="10.0.0.0",
+        ip_range="10.0.0.1-10.0.0.7",
         dimensions=ClusterDimensions(),
         gitops_repo_url="https://github.com/test/repo",
         sops_secret_ref="key",

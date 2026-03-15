@@ -45,3 +45,17 @@ class LogResponse(BaseModel):
     pod: str
     container: Optional[str] = None
     lines: List[str] = []
+
+
+class BlockingResource(BaseModel):
+    kind: str
+    name: str
+    finalizers: List[str]
+
+
+class UndeployStatus(BaseModel):
+    name: str
+    cluster: str
+    namespace_phase: str  # gone | active | terminating | unknown
+    finalizers: List[str] = []
+    blocking_resources: List[BlockingResource] = []

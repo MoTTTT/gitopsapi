@@ -6,13 +6,14 @@ Roles are derived from Keycloak group membership: cluster-operators, build-manag
 
 import os
 from dataclasses import dataclass
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 
 
 _GROUP_TO_ROLE = {
     "cluster-operators": "cluster_operator",
     "build-managers": "build_manager",
     "senior-developers": "senior_developer",
+    "security-admins": "security_admin",
 }
 
 
@@ -46,13 +47,29 @@ def _extract_caller(
     return CallerInfo(username=username, role=role)
 
 
-def require_role(*allowed_roles: str):
-    """Dependency factory — raises 403 if caller role is not in allowed_roles."""
-    def _dep(caller: CallerInfo = _extract_caller) -> CallerInfo:
-        if caller.role not in allowed_roles:
+class _RoleChecker:
+    """Callable dependency class — raises 403 if caller role is not in allowed_roles.
+
+    Using a callable class (rather than a closure) ensures FastAPI's dependency
+    injection correctly resolves the nested Depends(_extract_caller) in all versions.
+    """
+
+    def __init__(self, *allowed_roles: str) -> None:
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, caller: CallerInfo = Depends(_extract_caller)) -> CallerInfo:
+        if caller.role not in self.allowed_roles:
             raise HTTPException(
                 status_code=403,
                 detail=f"Role {caller.role!r} is not permitted for this operation",
             )
         return caller
-    return _dep
+
+
+def require_role(*allowed_roles: str):
+    """Dependency factory — raises 403 if caller role is not in allowed_roles.
+
+    Returns a Depends() object so it can be used directly as a parameter default:
+        caller: CallerInfo = require_role("build_manager")
+    """
+    return Depends(_RoleChecker(*allowed_roles))

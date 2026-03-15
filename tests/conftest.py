@@ -44,7 +44,8 @@ NO_ROLE_HEADERS     = {"X-Forwarded-User": "nobody", "X-Auth-Request-Groups": ""
 CLUSTER_SPEC = {
     "name": "test-cluster",
     "platform": "proxmox",
-    "ip_range": "192.168.1.100-192.168.1.110",
+    "vip": "192.168.1.100",
+    "ip_range": "192.168.1.101-192.168.1.107",
     "dimensions": {
         "control_plane_count": 1,
         "worker_count": 1,
@@ -65,6 +66,16 @@ APP_SPEC = {
     "values_yaml": "replicaCount: 1\n",
 }
 
+APP_CONFIG_SPEC = {
+    "app_id": "keycloak",
+    "cluster_id": "security",
+    "chart_version_override": None,
+    "values_override": "replicaCount: 1\n",
+    "enabled": True,
+    "pipeline_stage": None,
+    "gitops_source_ref": None,
+}
+
 PIPELINE_SPEC = {
     "name": "test-pipeline",
     "dev_cluster_id": "dev-cluster",
@@ -79,6 +90,7 @@ CHANGE_SPEC = {
     "change_request_id": "CHG0001234",
     "change_name": "Add new feature",
     "description": "Implements the new feature X",
+    "app_id": "test-app",
     "app_branch": "feature/new-feature",
 }
 
@@ -92,4 +104,14 @@ def client():
     with patch("gitopsgui.services.git_service.GitService.init", new_callable=AsyncMock):
         from gitopsgui.api.main import app
         with TestClient(app, raise_server_exceptions=True) as c:
+            yield c
+
+
+@pytest.fixture()
+def no_auth_client(monkeypatch):
+    """TestClient with GITOPSGUI_DEV_ROLE unset — used for 401 rejection tests."""
+    monkeypatch.delenv("GITOPSGUI_DEV_ROLE", raising=False)
+    with patch("gitopsgui.services.git_service.GitService.init", new_callable=AsyncMock):
+        from gitopsgui.api.main import app
+        with TestClient(app, raise_server_exceptions=False) as c:
             yield c

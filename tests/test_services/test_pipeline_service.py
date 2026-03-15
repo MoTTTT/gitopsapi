@@ -2,7 +2,6 @@
 Unit tests for PipelineService — mocks GitService and GitHubService.
 """
 
-import asyncio
 import pytest
 import yaml
 from unittest.mock import AsyncMock
@@ -25,6 +24,7 @@ _CHANGE = ChangeSpec(
     change_request_id="CHG001",
     change_name="Add feature X",
     description="Adds feature X to my-app",
+    app_id="my-app",
     app_branch="feature/x",
 )
 
@@ -52,14 +52,14 @@ def test_change_yaml_path():
 # get_pipeline
 # ---------------------------------------------------------------------------
 
-def test_get_pipeline_not_found_returns_none():
+async def test_get_pipeline_not_found_returns_none():
     svc = _svc()
     svc._git.read_file = AsyncMock(side_effect=FileNotFoundError)
-    result = asyncio.get_event_loop().run_until_complete(svc.get_pipeline("missing"))
+    result = await svc.get_pipeline("missing")
     assert result is None
 
 
-def test_get_pipeline_parses_yaml():
+async def test_get_pipeline_parses_yaml():
     svc = _svc()
     svc._git.read_file = AsyncMock(return_value=yaml.dump({
         "name": "my-pipeline",
@@ -70,7 +70,7 @@ def test_get_pipeline_parses_yaml():
         "chart_version": "1.0.0",
         "release_id": "r001",
     }))
-    result = asyncio.get_event_loop().run_until_complete(svc.get_pipeline("my-pipeline"))
+    result = await svc.get_pipeline("my-pipeline")
     assert result is not None
     assert result.spec.app_id == "my-app"
     assert result.spec.release_id == "r001"
@@ -80,7 +80,7 @@ def test_get_pipeline_parses_yaml():
 # create_pipeline
 # ---------------------------------------------------------------------------
 
-def test_create_pipeline_writes_yaml_and_opens_pr():
+async def test_create_pipeline_writes_yaml_and_opens_pr():
     svc = _svc()
     svc._git.create_branch = AsyncMock()
     svc._git.write_file = AsyncMock()
@@ -88,7 +88,7 @@ def test_create_pipeline_writes_yaml_and_opens_pr():
     svc._git.push = AsyncMock()
     svc._gh.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/5")
 
-    result = asyncio.get_event_loop().run_until_complete(svc.create_pipeline(_SPEC))
+    result = await svc.create_pipeline(_SPEC)
 
     svc._git.write_file.assert_called_once()
     written_path, written_content = svc._git.write_file.call_args.args
@@ -102,7 +102,7 @@ def test_create_pipeline_writes_yaml_and_opens_pr():
 # create_change
 # ---------------------------------------------------------------------------
 
-def test_create_change_writes_change_yaml():
+async def test_create_change_writes_change_yaml():
     svc = _svc()
     svc._git.create_branch = AsyncMock()
     svc._git.write_file = AsyncMock()
@@ -116,7 +116,7 @@ def test_create_change_writes_change_yaml():
     }))
     svc._git.list_dir = AsyncMock(return_value=[])
 
-    asyncio.get_event_loop().run_until_complete(svc.create_change("my-pipeline", _CHANGE))
+    await svc.create_change("my-pipeline", _CHANGE)
 
     written_path, written_content = svc._git.write_file.call_args.args
     assert "CHG001" in written_path
@@ -125,7 +125,7 @@ def test_create_change_writes_change_yaml():
     assert data["change_request_id"] == "CHG001"
 
 
-def test_create_change_pr_labelled_stage_dev():
+async def test_create_change_pr_labelled_stage_dev():
     svc = _svc()
     svc._git.create_branch = AsyncMock()
     svc._git.write_file = AsyncMock()
@@ -139,7 +139,7 @@ def test_create_change_pr_labelled_stage_dev():
     }))
     svc._git.list_dir = AsyncMock(return_value=[])
 
-    asyncio.get_event_loop().run_until_complete(svc.create_change("my-pipeline", _CHANGE))
+    await svc.create_change("my-pipeline", _CHANGE)
 
     labels = svc._gh.create_pr.call_args.kwargs.get("labels") or svc._gh.create_pr.call_args.args[3]
     assert "stage:dev" in labels
@@ -149,7 +149,7 @@ def test_create_change_pr_labelled_stage_dev():
 # promote
 # ---------------------------------------------------------------------------
 
-def test_promote_creates_pr_with_correct_stage_label():
+async def test_promote_creates_pr_with_correct_stage_label():
     svc = _svc()
     svc._git.create_branch = AsyncMock()
     svc._git.write_file = AsyncMock()
@@ -163,7 +163,7 @@ def test_promote_creates_pr_with_correct_stage_label():
     }))
     svc._git.list_dir = AsyncMock(return_value=[])
 
-    result = asyncio.get_event_loop().run_until_complete(svc.promote("my-pipeline", "production"))
+    result = await svc.promote("my-pipeline", "production")
 
     labels = svc._gh.create_pr.call_args.kwargs.get("labels") or svc._gh.create_pr.call_args.args[3]
     assert "stage:production" in labels
@@ -171,11 +171,11 @@ def test_promote_creates_pr_with_correct_stage_label():
     assert result.pr_url == "https://github.com/test/repo/pull/8"
 
 
-def test_promote_missing_pipeline_raises_404():
+async def test_promote_missing_pipeline_raises_404():
     from fastapi import HTTPException
     svc = _svc()
     svc._git.read_file = AsyncMock(side_effect=FileNotFoundError)
     svc._git.list_dir = AsyncMock(return_value=[])
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.get_event_loop().run_until_complete(svc.promote("missing", "ete"))
+        await svc.promote("missing", "ete")
     assert exc_info.value.status_code == 404

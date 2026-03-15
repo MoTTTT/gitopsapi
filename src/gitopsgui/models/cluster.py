@@ -10,13 +10,22 @@ class ClusterDimensions(BaseModel):
     boot_volume_gb: int = 50
 
 
+class BastionSpec(BaseModel):
+    hostname: str
+    ip: str
+    api_port: int = 6443  # port on bastion that forwards to k8s API server
+
+
 class ClusterSpec(BaseModel):
     name: str
     platform: str
+    vip: str
     ip_range: str
     dimensions: ClusterDimensions
-    gitops_repo_url: str
+    managed_gitops: bool = True  # TR-039: platform creates/manages {cluster}-infra and {cluster}-apps repos
+    gitops_repo_url: Optional[str] = None  # required when managed_gitops=False; derived when managed_gitops=True
     sops_secret_ref: str
+    bastion: Optional[BastionSpec] = None  # if set, kubeconfig server URL is rewritten to bastion
 
 
 class ClusterStatus(BaseModel):

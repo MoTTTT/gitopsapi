@@ -28,8 +28,8 @@ def test_list_applications_all_roles_allowed(client):
             assert r.status_code == 200
 
 
-def test_list_applications_no_role_rejected(client):
-    r = client.get("/api/v1/applications", headers=NO_ROLE_HEADERS)
+def test_list_applications_no_role_rejected(no_auth_client):
+    r = no_auth_client.get("/api/v1/applications", headers=NO_ROLE_HEADERS)
     assert r.status_code == 401
 
 

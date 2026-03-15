@@ -9,7 +9,7 @@ router = APIRouter(tags=["status"])
 
 
 @router.get("/status", response_model=AggregateStatus)
-async def aggregate_status(_=Depends(require_role("cluster_operator", "build_manager", "senior_developer"))):
+async def aggregate_status(_=require_role("cluster_operator", "build_manager", "senior_developer")):
     svc = K8sService()
     return await svc.list_all_flux_status()
 
@@ -17,7 +17,7 @@ async def aggregate_status(_=Depends(require_role("cluster_operator", "build_man
 @router.get("/status/{cluster}", response_model=ClusterFluxStatus)
 async def cluster_status(
     cluster: str,
-    _=Depends(require_role("cluster_operator", "build_manager", "senior_developer")),
+    _=require_role("cluster_operator", "build_manager", "senior_developer"),
 ):
     svc = K8sService()
     return await svc.get_cluster_flux_status(cluster)
@@ -28,7 +28,7 @@ async def list_resources(
     cluster: str,
     kind: Optional[str] = None,
     namespace: Optional[str] = None,
-    _=Depends(require_role("cluster_operator", "build_manager", "senior_developer")),
+    _=require_role("cluster_operator", "build_manager", "senior_developer"),
 ):
     svc = K8sService()
     return await svc.list_resources(cluster, kind=kind, namespace=namespace)
@@ -40,7 +40,7 @@ async def describe_resource(
     kind: str,
     namespace: str,
     name: str,
-    _=Depends(require_role("cluster_operator", "build_manager", "senior_developer")),
+    _=require_role("cluster_operator", "build_manager", "senior_developer"),
 ):
     svc = K8sService()
     return await svc.describe_resource(cluster, kind, namespace, name)
@@ -54,7 +54,7 @@ async def get_logs(
     name: str,
     container: Optional[str] = None,
     tail_lines: int = 100,
-    _=Depends(require_role("cluster_operator", "build_manager", "senior_developer")),
+    _=require_role("cluster_operator", "build_manager", "senior_developer"),
 ):
     svc = K8sService()
     return await svc.get_logs(cluster, namespace, name, container=container, tail_lines=tail_lines)

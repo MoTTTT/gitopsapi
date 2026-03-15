@@ -3,7 +3,6 @@ Unit tests for ClusterService — mocks GitService and GitHubService.
 """
 
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from gitopsgui.models.cluster import ClusterSpec, ClusterDimensions
@@ -15,8 +14,10 @@ from gitopsgui.services.cluster_service import (
 _SPEC = ClusterSpec(
     name="test-cluster",
     platform="proxmox",
-    ip_range="192.168.1.100-192.168.1.110",
+    vip="192.168.1.100",
+    ip_range="192.168.1.101-192.168.1.107",
     dimensions=ClusterDimensions(control_plane_count=1, worker_count=1),
+    managed_gitops=False,  # external repo — skips GitHub repo creation in create_cluster
     gitops_repo_url="https://github.com/test/repo",
     sops_secret_ref="sops-key",
 )
@@ -48,15 +49,15 @@ def test_render_cluster_yaml_contains_helmrelease():
 # get_cluster — reads from repo
 # ---------------------------------------------------------------------------
 
-def test_get_cluster_returns_none_if_not_found():
+async def test_get_cluster_returns_none_if_not_found():
     svc = ClusterService()
     svc._git = AsyncMock()
     svc._git.read_file = AsyncMock(side_effect=FileNotFoundError("not found"))
-    result = asyncio.get_event_loop().run_until_complete(svc.get_cluster("missing"))
+    result = await svc.get_cluster("missing")
     assert result is None
 
 
-def test_get_cluster_parses_values_yaml():
+async def test_get_cluster_parses_values_yaml():
     import yaml
     raw_values = yaml.dump({
         "cluster": {"name": "test-cluster"},
@@ -67,7 +68,7 @@ def test_get_cluster_parses_values_yaml():
     svc = ClusterService()
     svc._git = AsyncMock()
     svc._git.read_file = AsyncMock(return_value=raw_values)
-    result = asyncio.get_event_loop().run_until_complete(svc.get_cluster("test-cluster"))
+    result = await svc.get_cluster("test-cluster")
     assert result is not None
     assert result.name == "test-cluster"
     assert result.spec.ip_range == "192.168.1.0/24"
@@ -77,7 +78,7 @@ def test_get_cluster_parses_values_yaml():
 # create_cluster — branches, writes files, opens PR
 # ---------------------------------------------------------------------------
 
-def test_create_cluster_opens_pr():
+async def test_create_cluster_opens_pr():
     svc = ClusterService()
     svc._git = AsyncMock()
     svc._git.create_branch = AsyncMock()
@@ -87,7 +88,7 @@ def test_create_cluster_opens_pr():
     svc._gh = AsyncMock()
     svc._gh.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/1")
 
-    result = asyncio.get_event_loop().run_until_complete(svc.create_cluster(_SPEC))
+    result = await svc.create_cluster(_SPEC)
 
     svc._git.create_branch.assert_called_once()
     assert svc._git.write_file.call_count == 4  # values + cluster.yaml + kustomization + kustomizeconfig
@@ -95,7 +96,7 @@ def test_create_cluster_opens_pr():
     assert result.pr_url == "https://github.com/test/repo/pull/1"
 
 
-def test_create_cluster_pr_labels_include_cluster_and_stage():
+async def test_create_cluster_pr_labels_include_cluster_and_stage():
     svc = ClusterService()
     svc._git = AsyncMock()
     svc._git.create_branch = AsyncMock()
@@ -105,7 +106,7 @@ def test_create_cluster_pr_labels_include_cluster_and_stage():
     svc._gh = AsyncMock()
     svc._gh.create_pr = AsyncMock(return_value="https://github.com/test/pr/1")
 
-    asyncio.get_event_loop().run_until_complete(svc.create_cluster(_SPEC))
+    await svc.create_cluster(_SPEC)
 
     call_kwargs = svc._gh.create_pr.call_args
     labels = call_kwargs.kwargs.get("labels") or call_kwargs.args[3]

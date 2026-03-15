@@ -61,8 +61,8 @@ def test_aggregate_status_all_roles(client):
             assert r.status_code == 200
 
 
-def test_aggregate_status_no_role_rejected(client):
-    r = client.get("/api/v1/status", headers=NO_ROLE_HEADERS)
+def test_aggregate_status_no_role_rejected(no_auth_client):
+    r = no_auth_client.get("/api/v1/status", headers=NO_ROLE_HEADERS)
     assert r.status_code == 401
 
 

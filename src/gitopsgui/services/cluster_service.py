@@ -43,11 +43,27 @@ def _kustomizeconfig_path(name: str) -> str:
 
 
 def _render_values(spec: ClusterSpec) -> str:
+    # Top-level keys are GitOpsAPI object store fields (roundtrip fidelity).
+    # Nested keys are cluster-chart Helm values (controlplane, worker, network, cluster).
     data = {
+        "platform": spec.platform,
+        "vip": spec.vip,
+        "gitops_repo_url": spec.gitops_repo_url,
+        "sops_secret_ref": spec.sops_secret_ref,
+        "dimensions": {
+            "control_plane_count": spec.dimensions.control_plane_count,
+            "worker_count": spec.dimensions.worker_count,
+            "cpu_per_node": spec.dimensions.cpu_per_node,
+            "memory_gb_per_node": spec.dimensions.memory_gb_per_node,
+            "boot_volume_gb": spec.dimensions.boot_volume_gb,
+        },
         "cluster": {"name": spec.name},
-        "network": {"ip_ranges": [spec.ip_range]},
-        "controlplane": {"machine_count": spec.dimensions.control_plane_count},
+        "controlplane": {
+            "endpoint_ip": spec.vip,
+            "machine_count": spec.dimensions.control_plane_count,
+        },
         "worker": {"machine_count": spec.dimensions.worker_count},
+        "network": {"ip_ranges": [spec.ip_range]},
     }
     return yaml.dump(data, default_flow_style=False)
 
@@ -139,6 +155,7 @@ class ClusterService:
         spec = ClusterSpec(
             name=name,
             platform=data.get("platform", "proxmox"),
+            vip=data.get("vip", ""),
             ip_range=data.get("network", {}).get("ip_ranges", [""])[0],
             dimensions=data.get("dimensions", {}),
             gitops_repo_url=data.get("gitops_repo_url", ""),
@@ -146,7 +163,33 @@ class ClusterService:
         )
         return ClusterResponse(name=name, spec=spec)
 
+    async def _provision_gitops_repos(self, spec: ClusterSpec) -> ClusterSpec:
+        """TR-039: Create {cluster}-infra and {cluster}-apps as private repos on the git forge.
+
+        Returns an updated spec with gitops_repo_url populated from the created infra repo.
+        Raises RuntimeError if repo creation fails (cluster provisioning must not proceed).
+        """
+        infra_name = f"{spec.name}-infra"
+        apps_name = f"{spec.name}-apps"
+
+        infra_url = await self._gh.create_repo(
+            name=infra_name,
+            description=f"Flux infrastructure manifests for {spec.name} cluster",
+            private=True,
+        )
+        await self._gh.create_repo(
+            name=apps_name,
+            description=f"Application workloads for {spec.name} cluster",
+            private=True,
+        )
+
+        return spec.model_copy(update={"gitops_repo_url": infra_url})
+
     async def create_cluster(self, spec: ClusterSpec) -> ClusterResponse:
+        if spec.managed_gitops:
+            # TR-039: provision repos first — cluster creation fails if this fails
+            spec = await self._provision_gitops_repos(spec)
+
         branch = f"cluster/provision-{spec.name}-{uuid.uuid4().hex[:8]}"
         await self._git.create_branch(branch)
 
@@ -158,10 +201,25 @@ class ClusterService:
         await self._git.commit(f"chore: provision cluster {spec.name}")
         await self._git.push()
 
+        pr_body = (
+            f"Automated cluster provisioning for `{spec.name}`.\n\n"
+            f"IP range: {spec.ip_range}\n\n"
+        )
+        if spec.managed_gitops:
+            pr_body += (
+                f"**GitOps repos provisioned (TR-039)**:\n"
+                f"- `{spec.name}-infra`: {spec.gitops_repo_url}\n"
+                f"- `{spec.name}-apps`: (companion workload repo)\n\n"
+                f"**Next steps** (CC-053 — not yet automated):\n"
+                f"- Generate and register deploy keys for both repos\n"
+                f"- Generate per-cluster SOPS age key, encrypt with management key\n"
+                f"- Bootstrap Flux on the new cluster\n"
+            )
+
         pr_url = await self._gh.create_pr(
             branch=branch,
             title=f"Provision cluster: {spec.name}",
-            body=f"Automated cluster provisioning for `{spec.name}`.\n\nIP range: {spec.ip_range}",
+            body=pr_body,
             labels=["cluster", "stage:production"],
             reviewers=_CLUSTER_REVIEWERS,
         )

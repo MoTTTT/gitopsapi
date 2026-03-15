@@ -1,12 +1,13 @@
 image:
-  repository: harbor.podzone.cloud/gitopsapi/gitopsapi
-  tag: "latest"
+  repository: ghcr.io/motttt/gitopsapi
+  tag: "v0.1.5"
   pullPolicy: IfNotPresent
 
 gitops:
   repoUrl: ""
   branch: main
   githubRepo: ""
+  githubOrg: ""
   localPath: /tmp/gitops-repo
 
 secrets:

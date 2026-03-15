@@ -32,6 +32,8 @@ spec:
               value: {{ .Values.gitops.branch | quote }}
             - name: GITHUB_REPO
               value: {{ .Values.gitops.githubRepo | quote }}
+            - name: GITHUB_ORG
+              value: {{ .Values.gitops.githubOrg | quote }}
             - name: GITOPS_LOCAL_PATH
               value: {{ .Values.gitops.localPath | default "/tmp/gitops-repo" | quote }}
             - name: GITOPS_SSH_KEY_PATH

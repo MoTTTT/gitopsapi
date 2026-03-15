@@ -2,7 +2,6 @@
 Unit tests for GitHubService — mocks PyGitHub so no real API calls are made.
 """
 
-import asyncio
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock
 
@@ -80,59 +79,51 @@ def _mock_pr(
 # create_pr
 # ---------------------------------------------------------------------------
 
-def test_create_pr_returns_html_url():
+async def test_create_pr_returns_html_url():
     svc = GitHubService()
     mock_pr = _mock_pr(html_url="https://github.com/test/repo/pull/42")
     mock_repo = MagicMock()
     mock_repo.create_pull.return_value = mock_pr
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        result = asyncio.get_event_loop().run_until_complete(
-            svc.create_pr("my-branch", "Title", "Body", ["cluster"], [])
-        )
+        result = await svc.create_pr("my-branch", "Title", "Body", ["cluster"], [])
 
     assert result == "https://github.com/test/repo/pull/42"
     mock_repo.create_pull.assert_called_once()
 
 
-def test_create_pr_adds_labels():
+async def test_create_pr_adds_labels():
     svc = GitHubService()
     mock_pr = _mock_pr()
     mock_repo = MagicMock()
     mock_repo.create_pull.return_value = mock_pr
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        asyncio.get_event_loop().run_until_complete(
-            svc.create_pr("branch", "Title", "Body", ["cluster", "stage:production"], [])
-        )
+        await svc.create_pr("branch", "Title", "Body", ["cluster", "stage:production"], [])
 
     assert mock_pr.add_to_labels.call_count == 2
 
 
-def test_create_pr_requests_reviewers():
+async def test_create_pr_requests_reviewers():
     svc = GitHubService()
     mock_pr = _mock_pr()
     mock_repo = MagicMock()
     mock_repo.create_pull.return_value = mock_pr
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        asyncio.get_event_loop().run_until_complete(
-            svc.create_pr("branch", "Title", "Body", [], ["alice", "bob"])
-        )
+        await svc.create_pr("branch", "Title", "Body", [], ["alice", "bob"])
 
     mock_pr.create_review_request.assert_called_once_with(reviewers=["alice", "bob"])
 
 
-def test_create_pr_skips_review_request_when_no_reviewers():
+async def test_create_pr_skips_review_request_when_no_reviewers():
     svc = GitHubService()
     mock_pr = _mock_pr()
     mock_repo = MagicMock()
     mock_repo.create_pull.return_value = mock_pr
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        asyncio.get_event_loop().run_until_complete(
-            svc.create_pr("branch", "Title", "Body", [], [])
-        )
+        await svc.create_pr("branch", "Title", "Body", [], [])
 
     mock_pr.create_review_request.assert_not_called()
 
@@ -141,7 +132,7 @@ def test_create_pr_skips_review_request_when_no_reviewers():
 # list_prs
 # ---------------------------------------------------------------------------
 
-def test_list_prs_returns_all_open():
+async def test_list_prs_returns_all_open():
     svc = GitHubService()
     pr1 = _mock_pr(number=1, labels=["cluster", "stage:production"])
     pr2 = _mock_pr(number=2, labels=["application", "stage:dev"])
@@ -149,12 +140,12 @@ def test_list_prs_returns_all_open():
     mock_repo.get_pulls.return_value = [pr1, pr2]
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        results = asyncio.get_event_loop().run_until_complete(svc.list_prs())
+        results = await svc.list_prs()
 
     assert len(results) == 2
 
 
-def test_list_prs_filters_by_label():
+async def test_list_prs_filters_by_label():
     svc = GitHubService()
     pr1 = _mock_pr(number=1, labels=["cluster", "stage:production"])
     pr2 = _mock_pr(number=2, labels=["application", "stage:dev"])
@@ -162,7 +153,7 @@ def test_list_prs_filters_by_label():
     mock_repo.get_pulls.return_value = [pr1, pr2]
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        results = asyncio.get_event_loop().run_until_complete(svc.list_prs(label="cluster"))
+        results = await svc.list_prs(label="cluster")
 
     assert len(results) == 1
     assert results[0].resource_type == "cluster"
@@ -172,28 +163,28 @@ def test_list_prs_filters_by_label():
 # get_pr
 # ---------------------------------------------------------------------------
 
-def test_get_pr_returns_pr_detail():
+async def test_get_pr_returns_pr_detail():
     svc = GitHubService()
     pr = _mock_pr(number=5, labels=["pipeline", "stage:ete"])
     mock_repo = MagicMock()
     mock_repo.get_pull.return_value = pr
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        result = asyncio.get_event_loop().run_until_complete(svc.get_pr(5))
+        result = await svc.get_pr(5)
 
     assert result is not None
     assert result.pr_number == 5
     assert result.stage == "ete"
 
 
-def test_get_pr_returns_none_on_github_exception():
+async def test_get_pr_returns_none_on_github_exception():
     from github import GithubException
     svc = GitHubService()
     mock_repo = MagicMock()
     mock_repo.get_pull.side_effect = GithubException(404, "Not Found")
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        result = asyncio.get_event_loop().run_until_complete(svc.get_pr(999))
+        result = await svc.get_pr(999)
 
     assert result is None
 
@@ -202,14 +193,14 @@ def test_get_pr_returns_none_on_github_exception():
 # approve_pr
 # ---------------------------------------------------------------------------
 
-def test_approve_pr_creates_review():
+async def test_approve_pr_creates_review():
     svc = GitHubService()
     pr = _mock_pr(number=3)
     mock_repo = MagicMock()
     mock_repo.get_pull.return_value = pr
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        asyncio.get_event_loop().run_until_complete(svc.approve_pr(3, "alice"))
+        await svc.approve_pr(3, "alice")
 
     pr.create_review.assert_called_once()
     call_kwargs = pr.create_review.call_args.kwargs
@@ -221,14 +212,14 @@ def test_approve_pr_creates_review():
 # merge_pr
 # ---------------------------------------------------------------------------
 
-def test_merge_pr_squash():
+async def test_merge_pr_squash():
     svc = GitHubService()
     pr = _mock_pr(number=4)
     mock_repo = MagicMock()
     mock_repo.get_pull.return_value = pr
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        asyncio.get_event_loop().run_until_complete(svc.merge_pr(4))
+        await svc.merge_pr(4)
 
     pr.merge.assert_called_once_with(merge_method="squash")
 
@@ -237,14 +228,12 @@ def test_merge_pr_squash():
 # tag_deployment
 # ---------------------------------------------------------------------------
 
-def test_tag_deployment_creates_ref():
+async def test_tag_deployment_creates_ref():
     svc = GitHubService()
     mock_repo = MagicMock()
 
     with patch.object(svc, "_repo", return_value=mock_repo):
-        asyncio.get_event_loop().run_until_complete(
-            svc.tag_deployment("abc123", "deploy/my-app/r001")
-        )
+        await svc.tag_deployment("abc123", "deploy/my-app/r001")
 
     mock_repo.create_git_ref.assert_called_once_with(
         ref="refs/tags/deploy/my-app/r001", sha="abc123"

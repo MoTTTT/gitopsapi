@@ -16,6 +16,7 @@ class ChangeSpec(BaseModel):
     change_request_id: str
     change_name: str
     description: str
+    app_id: str
     app_branch: str
 
 

@@ -111,6 +111,7 @@ class PipelineService:
             "change_request_id": change.change_request_id,
             "change_name": change.change_name,
             "description": change.description,
+            "app_id": change.app_id,
             "app_branch": change.app_branch,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }

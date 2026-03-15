@@ -6,22 +6,23 @@ import pytest
 from unittest.mock import AsyncMock, patch
 
 from tests.conftest import CLUSTER_OP_HEADERS, BUILD_MGR_HEADERS, SENIOR_DEV_HEADERS, NO_ROLE_HEADERS
+from gitopsgui.models.pr import PRDetail
 
 
-def _make_pr(pr_number: int, stage: str, approvals_satisfied: bool = False) -> dict:
-    return {
-        "pr_number": pr_number,
-        "title": f"PR #{pr_number}",
-        "state": "open",
-        "labels": [f"stage:{stage}", "promotion"],
-        "stage": stage,
-        "resource_type": "promotion",
-        "diff_url": "https://github.com/test/repo/pull/1.diff",
-        "reviews": [],
-        "required_approvers": [],
-        "approvals_satisfied": approvals_satisfied,
-        "pr_url": f"https://github.com/test/repo/pull/{pr_number}",
-    }
+def _make_pr(pr_number: int, stage: str, approvals_satisfied: bool = False) -> PRDetail:
+    return PRDetail(
+        pr_number=pr_number,
+        title=f"PR #{pr_number}",
+        state="open",
+        labels=[f"stage:{stage}", "promotion"],
+        stage=stage,
+        resource_type="promotion",
+        diff_url="https://github.com/test/repo/pull/1.diff",
+        reviews=[],
+        required_approvers=[],
+        approvals_satisfied=approvals_satisfied,
+        pr_url=f"https://github.com/test/repo/pull/{pr_number}",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -38,8 +39,8 @@ def test_list_prs_all_roles_allowed(client):
             assert r.status_code == 200
 
 
-def test_list_prs_no_role_rejected(client):
-    r = client.get("/api/v1/prs", headers=NO_ROLE_HEADERS)
+def test_list_prs_no_role_rejected(no_auth_client):
+    r = no_auth_client.get("/api/v1/prs", headers=NO_ROLE_HEADERS)
     assert r.status_code == 401
 
 

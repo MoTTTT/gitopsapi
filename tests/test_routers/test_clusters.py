@@ -35,8 +35,8 @@ def test_list_clusters_allowed_roles(client, headers):
     assert isinstance(r.json(), list)
 
 
-def test_list_clusters_no_role_rejected(client):
-    r = client.get("/api/v1/clusters", headers=NO_ROLE_HEADERS)
+def test_list_clusters_no_role_rejected(no_auth_client):
+    r = no_auth_client.get("/api/v1/clusters", headers=NO_ROLE_HEADERS)
     assert r.status_code == 401
 
 
@@ -119,6 +119,6 @@ def test_get_kubeconfig_cluster_operator_allowed(client):
     assert "kubeconfig" in r.headers.get("content-disposition", "")
 
 
-def test_get_kubeconfig_no_role_rejected(client):
-    r = client.get("/api/v1/clusters/test-cluster/kubeconfig", headers=NO_ROLE_HEADERS)
+def test_get_kubeconfig_no_role_rejected(no_auth_client):
+    r = no_auth_client.get("/api/v1/clusters/test-cluster/kubeconfig", headers=NO_ROLE_HEADERS)
     assert r.status_code == 401
