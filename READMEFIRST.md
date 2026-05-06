@@ -40,7 +40,7 @@ Your current task assignments are in:
 
 **DO NOT read files from local workspace for context.** Use Qdrant.
 
-**Access**: http://localhost:6333 (port-forwarded from openclaw cluster)
+**Access**: http://qdrant.agenticflows.co.uk:8080
 
 **Collections**:
 - `gitopsgui-specs` — GitOpsGUI/API requirements, architecture, task breakdowns
@@ -50,12 +50,12 @@ Your current task assignments are in:
 ```python
 from qdrant_client import QdrantClient
 
-client = QdrantClient(url="http://localhost:6333")
-results = client.search(
+client = QdrantClient(url="http://qdrant.agenticflows.co.uk:8080")
+results = client.query_points(
     collection_name="gitopsgui-specs",
     query_text="bastion kubeconfig rewrite",  # Your search query
-    limit=3
-)
+    limit=3,
+).points
 for result in results:
     print(result.payload["text"])
 ```
@@ -194,7 +194,7 @@ Related repos:
 - **Spec (summary)**: `/Users/martincolley/workspace/podzoneAgentTeam/specifications/gitopsgui.md`
 - **Tasks (detailed)**: `/Users/martincolley/workspace/podzoneAgentTeam/specifications/gitopsgui-tasks.md`
 - **Tasks (live)**: `/Users/martincolley/workspace/podzoneAgentTeam/planning/tasks.md`
-- **Qdrant**: http://localhost:6333
+- **Qdrant**: http://qdrant.agenticflows.co.uk:8080
 - **Ollama**: http://localhost:11435
 
 ---
