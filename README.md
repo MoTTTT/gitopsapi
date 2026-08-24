@@ -1,5 +1,11 @@
 # GitOpsAPI
 
+> **Status: parked (2026-08-19).** No on-prem infrastructure currently
+> exists to sustain supply-chain PR maintenance (keeping dependency/base-image
+> patches current), so published build artefacts are being made
+> non-publicly-downloadable while parked — this repo stays public and open
+> for reference/reads. See board task GOP-052 for the artefact-visibility work.
+
 A FastAPI backend that treats Git as an object store for platform infrastructure. All mutations create a feature branch and raise a pull request — nothing is committed directly to `main`. Clusters, applications, and promotion pipelines are first-class API objects backed by Helm values files in GitOps repositories.
 
 ## What it does
